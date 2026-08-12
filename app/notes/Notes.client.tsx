@@ -1,0 +1,60 @@
+'use client';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useDebouncedCallback } from 'use-debounce';
+import { fetchNotes } from '@/lib/api';
+import NoteList from '../../components/NoteList/NoteList';
+import Pagination from '../../components/Pagination/Pagination';
+import SearchBox from '../../components/SearchBox/SearchBox';
+import Modal from '../../components/Modal/Modal';
+import NoteForm from '../../components/NoteForm/NoteForm';
+import css from './Notes.module.css';
+const PER_PAGE = 12;
+const NotesClient = () => {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 300);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['notes', page, search],
+    queryFn: () => fetchNotes({ page, perPage: PER_PAGE, search }),
+    placeholderData: keepPreviousData,
+  });
+  return (
+    <main>
+      {' '}
+      <div className={css.toolbar}>
+        {' '}
+        <SearchBox onSearch={debouncedSearch} />{' '}
+        {data && data.totalPages > 1 && (
+          <Pagination
+            pageCount={data.totalPages}
+            currentPage={page}
+            onPageChange={setPage}
+          />
+        )}{' '}
+        <button
+          type="button"
+          className={css.button}
+          onClick={() => setIsModalOpen(true)}
+        >
+          {' '}
+          Create note +{' '}
+        </button>{' '}
+      </div>{' '}
+      {isLoading && <p>Loading, please wait...</p>}{' '}
+      {isError && <p>Something went wrong.</p>}{' '}
+      {data && data.notes.length > 0 && <NoteList notes={data.notes} />}{' '}
+      {isModalOpen && (
+        <Modal onClose={() => setIsModalOpen(false)}>
+          {' '}
+          <NoteForm onClose={() => setIsModalOpen(false)} />{' '}
+        </Modal>
+      )}{' '}
+    </main>
+  );
+};
+export default NotesClient;
